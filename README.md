@@ -2,6 +2,8 @@
 
 AI Workforce Manager for small businesses. Upload SOPs and operational documents, and CrewOS uses Google Gemini to generate training, quizzes, roleplay scenarios, certification recommendations, and schedules — all persisted in MongoDB.
 
+**Repository:** [github.com/GulnozaU/crewOS](https://github.com/GulnozaU/crewOS)
+
 ## Prerequisites
 
 - Node.js 18+
@@ -11,7 +13,8 @@ AI Workforce Manager for small businesses. Upload SOPs and operational documents
 ## Setup
 
 ```bash
-cd google-hackathon/crewOS
+git clone https://github.com/GulnozaU/crewOS.git
+cd crewOS
 cp .env.example .env.local
 # Edit .env.local with your MONGODB_URI and GEMINI_API_KEY
 
