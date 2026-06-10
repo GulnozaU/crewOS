@@ -23,11 +23,18 @@ export async function POST(
     return NextResponse.json(serialize(session));
   }
 
-  const module = await collections.trainingModules.findOne({
+  if (session.status !== "completed" && session.status !== "evaluated") {
+    return NextResponse.json(
+      { error: "Complete the roleplay conversation before evaluation" },
+      { status: 400 }
+    );
+  }
+
+  const trainingModule = await collections.trainingModules.findOne({
     _id: session.trainingModuleId,
   });
-  const doc = module
-    ? await collections.documents.findOne({ _id: module.documentId })
+  const doc = trainingModule
+    ? await collections.documents.findOne({ _id: trainingModule.documentId })
     : null;
   const documentContext = doc?.extractedText || doc?.summary || "";
 

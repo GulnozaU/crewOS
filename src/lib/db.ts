@@ -1,4 +1,5 @@
 import { MongoClient, Db, Collection } from "mongodb";
+import { MongoMemoryServer } from "mongodb-memory-server";
 import type {
   Company,
   DocumentRecord,
@@ -15,25 +16,44 @@ import type {
   SupplementalTraining,
 } from "@/types";
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017";
 const DB_NAME = process.env.MONGODB_DB || "crewoz";
 
 declare global {
-  // eslint-disable-next-line no-var
   var _mongoClientPromise: Promise<MongoClient> | undefined;
+  var _mongoMemoryServer: MongoMemoryServer | undefined;
+}
+
+async function resolveMongoUri(): Promise<string> {
+  const configured = process.env.MONGODB_URI?.trim();
+  if (configured && configured !== "memory") {
+    return configured;
+  }
+
+  if (!global._mongoMemoryServer) {
+    global._mongoMemoryServer = await MongoMemoryServer.create();
+    console.log(
+      `[CrewOS] Using in-memory MongoDB at ${global._mongoMemoryServer.getUri()}`
+    );
+  }
+
+  return global._mongoMemoryServer.getUri();
+}
+
+async function getClientPromise(): Promise<MongoClient> {
+  const uri = await resolveMongoUri();
+  const client = new MongoClient(uri);
+  return client.connect();
 }
 
 let clientPromise: Promise<MongoClient>;
 
 if (process.env.NODE_ENV === "development") {
   if (!global._mongoClientPromise) {
-    const client = new MongoClient(MONGODB_URI);
-    global._mongoClientPromise = client.connect();
+    global._mongoClientPromise = getClientPromise();
   }
   clientPromise = global._mongoClientPromise;
 } else {
-  const client = new MongoClient(MONGODB_URI);
-  clientPromise = client.connect();
+  clientPromise = getClientPromise();
 }
 
 export async function getDb(): Promise<Db> {

@@ -36,13 +36,13 @@ export async function POST(
     completedSections.sort((a, b) => a - b);
   }
 
-  const module = await collections.trainingModules.findOne({
+  const trainingModule = await collections.trainingModules.findOne({
     _id: toObjectId(trainingModuleId),
   });
 
   const allSectionsDone =
     complete ||
-    (module && completedSections.length >= module.sections.length);
+    (trainingModule && completedSections.length >= trainingModule.sections.length);
 
   const update = {
     completedSections,

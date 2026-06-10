@@ -40,10 +40,15 @@ export async function POST(
     }
   );
 
+  const feedbackEmployeeId =
+    schedule.shifts.length > 0
+      ? toObjectId(schedule.shifts[0].employeeId)
+      : schedule.companyId;
+
   await collections.managerFeedback.insertOne({
     companyId: schedule.companyId,
     recommendationId: schedule._id!,
-    employeeId: schedule.companyId,
+    employeeId: feedbackEmployeeId,
     recommendationType: "schedule",
     originalRecommendation: schedule.reasoning,
     decision,

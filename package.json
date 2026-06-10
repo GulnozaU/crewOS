@@ -1,7 +1,12 @@
 {
   "name": "crewoz",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GulnozaU/crewOS.git"
+  },
+  "homepage": "https://github.com/GulnozaU/crewOS#readme",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,6 +16,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
     "mongodb": "^6.16.0",
+    "mongodb-memory-server": "^11.2.0",
     "next": "^15.3.3",
     "pdf-parse": "^1.1.1",
     "react": "^19.1.0",

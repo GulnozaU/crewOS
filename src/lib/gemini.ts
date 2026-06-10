@@ -384,6 +384,75 @@ Content must be derived from company documents and directly address the weak are
   return extractJson(result.response.text());
 }
 
+export async function scoreQuizAnswers(
+  moduleTitle: string,
+  sections: TrainingSection[],
+  questions: QuizQuestion[],
+  answers: { questionId: string; answer: string }[]
+): Promise<{
+  scoredAnswers: { questionId: string; answer: string; isCorrect: boolean }[];
+  score: number;
+}> {
+  const model = getModel();
+  const content = sections
+    .map((s) => `## ${s.title}\n${s.content}\nKey points: ${s.keyPoints.join(", ")}`)
+    .join("\n\n");
+
+  const answerMap = Object.fromEntries(answers.map((a) => [a.questionId, a.answer]));
+
+  const prompt = `You are grading a training quiz. Score each employee answer against the training module content ONLY.
+
+Module: ${moduleTitle}
+
+Training content:
+${content.slice(0, 20000)}
+
+Questions and employee answers:
+${questions
+  .map((q) => {
+    const employeeAnswer = answerMap[q.id] || "(no answer)";
+    return `ID: ${q.id}
+Question: ${q.question}
+Options: ${q.options.join(" | ")}
+Reference correct answer: ${q.correctAnswer}
+Employee answer: ${employeeAnswer}`;
+  })
+  .join("\n\n")}
+
+Return valid JSON:
+{
+  "results": [
+    {
+      "questionId": "q1",
+      "isCorrect": true,
+      "reasoning": "brief reason based on training content"
+    }
+  ]
+}
+
+Mark isCorrect true only if the employee answer demonstrates correct understanding per the training content. Accept paraphrased correct answers.`;
+
+  const result = await model.generateContent(prompt);
+  const parsed = extractJson<{
+    results: { questionId: string; isCorrect: boolean }[];
+  }>(result.response.text());
+
+  const resultMap = Object.fromEntries(
+    parsed.results.map((r) => [r.questionId, r.isCorrect])
+  );
+
+  const scoredAnswers = answers.map((a) => ({
+    questionId: a.questionId,
+    answer: a.answer,
+    isCorrect: resultMap[a.questionId] ?? false,
+  }));
+
+  const correctCount = scoredAnswers.filter((a) => a.isCorrect).length;
+  const score = Math.round((correctCount / questions.length) * 100);
+
+  return { scoredAnswers, score };
+}
+
 export async function chatWithManager(
   companyContext: string,
   employeeName: string,

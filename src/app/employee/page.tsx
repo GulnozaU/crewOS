@@ -228,7 +228,7 @@ export default function EmployeePage() {
     setChatLoading(false);
   }
 
-  const module = modules.find((m) => m._id === selectedModule);
+  const activeModule = modules.find((m) => m._id === selectedModule);
   const moduleProgress = selectedModule ? progress[selectedModule] : null;
   const quiz = quizzes.find((q) => q.trainingModuleId === selectedModule);
 
@@ -297,23 +297,23 @@ export default function EmployeePage() {
             </select>
           </div>
 
-          {tab === "training" && module && (
+          {tab === "training" && activeModule && (
             <div className="card">
-              <h2 className="mb-2 text-lg font-semibold">{module.title}</h2>
-              <p className="mb-4 text-sm text-[var(--muted)]">{module.description}</p>
+              <h2 className="mb-2 text-lg font-semibold">{activeModule.title}</h2>
+              <p className="mb-4 text-sm text-[var(--muted)]">{activeModule.description}</p>
               {moduleProgress?.status === "completed" && (
                 <p className="mb-4 text-sm text-[var(--success)]">Training completed</p>
               )}
-              {module.sections[currentSection] && (
+              {activeModule.sections[currentSection] && (
                 <div>
                   <h3 className="mb-2 font-medium">
-                    Section {currentSection + 1}: {module.sections[currentSection].title}
+                    Section {currentSection + 1}: {activeModule.sections[currentSection].title}
                   </h3>
                   <div className="mb-4 whitespace-pre-wrap text-sm">
-                    {module.sections[currentSection].content}
+                    {activeModule.sections[currentSection].content}
                   </div>
                   <ul className="mb-4 list-disc pl-5 text-sm">
-                    {module.sections[currentSection].keyPoints.map((kp, i) => (
+                    {activeModule.sections[currentSection].keyPoints.map((kp, i) => (
                       <li key={i}>{kp}</li>
                     ))}
                   </ul>
@@ -326,12 +326,12 @@ export default function EmployeePage() {
                     <button
                       className="btn btn-primary"
                       onClick={async () => {
-                        const isLast = currentSection === module.sections.length - 1;
-                        await completeSection(module._id, currentSection, isLast);
+                        const isLast = currentSection === activeModule.sections.length - 1;
+                        await completeSection(activeModule._id, currentSection, isLast);
                         if (!isLast) setCurrentSection((s) => s + 1);
                       }}
                     >
-                      {currentSection === module.sections.length - 1 ? "Complete Training" : "Next Section"}
+                      {currentSection === activeModule.sections.length - 1 ? "Complete Training" : "Next Section"}
                     </button>
                   </div>
                 </div>

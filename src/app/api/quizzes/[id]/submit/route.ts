@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCollections } from "@/lib/db";
+import { scoreQuizAnswers } from "@/lib/gemini";
 import { toObjectId, serialize } from "@/lib/utils";
 
 export async function POST(
@@ -37,22 +38,19 @@ export async function POST(
     );
   }
 
-  const scoredAnswers = answers.map(
-    (a: { questionId: string; answer: string }) => {
-      const question = quiz.questions.find((q) => q.id === a.questionId);
-      const isCorrect =
-        question?.correctAnswer.trim().toLowerCase() ===
-        a.answer.trim().toLowerCase();
-      return {
-        questionId: a.questionId,
-        answer: a.answer,
-        isCorrect: !!isCorrect,
-      };
-    }
-  );
+  const trainingModule = await collections.trainingModules.findOne({
+    _id: quiz.trainingModuleId,
+  });
+  if (!trainingModule) {
+    return NextResponse.json({ error: "Training module not found" }, { status: 404 });
+  }
 
-  const correctCount = scoredAnswers.filter((a) => a.isCorrect).length;
-  const score = Math.round((correctCount / quiz.questions.length) * 100);
+  const { scoredAnswers, score } = await scoreQuizAnswers(
+    trainingModule.title,
+    trainingModule.sections,
+    quiz.questions,
+    answers
+  );
   const passed = score >= quiz.passingScore;
   const now = new Date();
 

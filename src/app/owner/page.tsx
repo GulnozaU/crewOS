@@ -233,10 +233,23 @@ export default function OwnerPage() {
           <section className="card">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-semibold">Schedule Recommendations</h2>
-              <button className="btn btn-primary" onClick={generateSchedule} disabled={generatingSchedule || employees.length === 0}>
+              <button
+                className="btn btn-primary"
+                onClick={generateSchedule}
+                disabled={
+                  generatingSchedule ||
+                  employees.length === 0 ||
+                  !certifications.some((c) => c.status === "approved")
+                }
+              >
                 {generatingSchedule ? "Generating..." : "Generate Schedule"}
               </button>
             </div>
+            {!certifications.some((c) => c.status === "approved") && (
+              <p className="mb-3 text-sm text-[var(--muted)]">
+                Approve a certification recommendation first. Schedules are generated from approved certifications.
+              </p>
+            )}
             {schedules.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">No schedules yet.</p>
             ) : (

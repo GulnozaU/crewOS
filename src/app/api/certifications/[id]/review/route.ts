@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCollections } from "@/lib/db";
+import { createScheduleRecommendation } from "@/lib/workflows";
 import { toObjectId, serialize } from "@/lib/utils";
 
 export async function POST(
@@ -50,6 +51,20 @@ export async function POST(
     managerComments: managerComments?.trim() || "",
     createdAt: now,
   });
+
+  if (decision === "approved") {
+    const existingSchedule = await collections.scheduleRecommendations.findOne({
+      companyId: recommendation.companyId,
+      status: "pending",
+    });
+    if (!existingSchedule) {
+      try {
+        await createScheduleRecommendation(recommendation.companyId);
+      } catch (err) {
+        console.error("Auto schedule generation after certification approval failed:", err);
+      }
+    }
+  }
 
   const updated = await collections.certificationRecommendations.findOne({
     _id: toObjectId(id),

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Company not found" }, { status: 404 });
   }
 
-  const ext = path.extname(file.name) || ".txt";
+  const ext = path.extname(file.name).toLowerCase() || ".txt";
   const fileName = `${uuidv4()}${ext}`;
   const uploadDir = await ensureUploadDir(companyId);
   const filePath = path.join(uploadDir, fileName);
@@ -33,12 +33,23 @@ export async function POST(request: NextRequest) {
   const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(filePath, buffer);
 
+  const mimeByExt: Record<string, string> = {
+    ".pdf": "application/pdf",
+    ".txt": "text/plain",
+    ".md": "text/markdown",
+    ".text": "text/plain",
+  };
+  const mimeType =
+    file.type && file.type !== "application/octet-stream"
+      ? file.type
+      : mimeByExt[ext] || "application/octet-stream";
+
   const now = new Date();
   const result = await documents.insertOne({
     companyId: toObjectId(companyId),
     fileName,
     originalName: file.name,
-    mimeType: file.type || "application/octet-stream",
+    mimeType,
     filePath,
     status: "uploaded",
     createdAt: now,

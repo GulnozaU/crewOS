@@ -5,8 +5,10 @@ import {
   generateTrainingModule,
   generateQuiz,
   generateSupplementalTraining,
+  generateScheduleRecommendation,
 } from "./gemini";
 import { extractTextFromFile } from "./documents";
+import type { ScheduleRecommendation } from "@/types";
 
 export async function processDocument(documentId: string): Promise<void> {
   const collections = await getCollections();
@@ -235,4 +237,74 @@ export async function getHistoricalManagerFeedback(companyId: ObjectId) {
     .sort({ createdAt: -1 })
     .limit(20)
     .toArray();
+}
+
+export async function createScheduleRecommendation(
+  companyId: ObjectId,
+  weekStartDate?: string
+): Promise<ScheduleRecommendation> {
+  const collections = await getCollections();
+
+  const employees = await collections.employees.find({ companyId }).toArray();
+  if (employees.length === 0) {
+    throw new Error("Add employees before generating a schedule");
+  }
+
+  const approvedCerts = await collections.certificationRecommendations
+    .find({ companyId, status: "approved" })
+    .toArray();
+
+  if (approvedCerts.length === 0) {
+    throw new Error(
+      "Approve at least one certification recommendation before generating a schedule"
+    );
+  }
+
+  const approvedWithDetails = await Promise.all(
+    approvedCerts.map(async (cert) => {
+      const emp = employees.find((e) => e._id?.equals(cert.employeeId));
+      const mod = await collections.trainingModules.findOne({
+        _id: cert.trainingModuleId,
+      });
+      return {
+        employeeName: emp?.name || "Unknown",
+        role: emp?.role || "Unknown",
+        moduleTitle: mod?.title || "Unknown",
+      };
+    })
+  );
+
+  const scheduleFeedback = (await getHistoricalManagerFeedback(companyId)).filter(
+    (f) => f.recommendationType === "schedule"
+  );
+
+  const startDate = weekStartDate || new Date().toISOString().split("T")[0];
+
+  const schedule = await generateScheduleRecommendation(
+    employees,
+    approvedWithDetails,
+    scheduleFeedback,
+    startDate
+  );
+
+  const now = new Date();
+  const result = await collections.scheduleRecommendations.insertOne({
+    companyId,
+    weekStartDate: startDate,
+    shifts: schedule.shifts,
+    reasoning: schedule.reasoning,
+    status: "pending",
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const record = await collections.scheduleRecommendations.findOne({
+    _id: result.insertedId,
+  });
+
+  if (!record) {
+    throw new Error("Failed to create schedule recommendation");
+  }
+
+  return record;
 }

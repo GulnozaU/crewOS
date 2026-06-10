@@ -19,10 +19,10 @@ export async function POST(request: NextRequest) {
   const employee = await collections.employees.findOne({
     _id: toObjectId(employeeId),
   });
-  const module = await collections.trainingModules.findOne({
+  const trainingModule = await collections.trainingModules.findOne({
     _id: toObjectId(trainingModuleId),
   });
-  if (!employee || !module) {
+  if (!employee || !trainingModule) {
     return NextResponse.json({ error: "Employee or module not found" }, { status: 404 });
   }
 
@@ -40,12 +40,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const doc = await collections.documents.findOne({ _id: module.documentId });
+  const doc = await collections.documents.findOne({ _id: trainingModule.documentId });
   const documentText = doc?.extractedText || doc?.summary || "";
 
   const scenario = await generateRoleplayScenario(
     documentText,
-    module.title,
+    trainingModule.title,
     employee.role
   );
 
