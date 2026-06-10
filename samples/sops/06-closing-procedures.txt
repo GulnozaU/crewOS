@@ -1,0 +1,42 @@
+SUNRISE COFFEE CO. — CLOSING PROCEDURES SOP
+Document ID: SOP-CLOSE-006 | Version 1.0
+
+PURPOSE
+Close the store safely, clean thoroughly, and secure the premises.
+
+TIMING
+Closing shift begins final cleanup 30 minutes before posted close time.
+No new customers admitted after closing time (complete orders in progress only).
+
+EQUIPMENT SHUTDOWN
+1. Turn off espresso machine using proper cooldown procedure (not emergency off).
+2. Empty and rinse portafilters. Leave portafilters out to air dry.
+3. Clean steam wands, group heads, and drip trays.
+4. Turn off grinders and blenders.
+5. Shut down POS after final transaction is complete.
+
+FOOD STORAGE
+- Wrap all pastries. Label with date. Refrigerate perishable items.
+- Discard any open dairy not used during shift.
+- Wipe down all refrigerator handles and shelves.
+
+CLEANING CHECKLIST
+- Sweep and mop entire customer area and behind counter.
+- Empty all trash bins. Replace liners.
+- Sanitize all tables, chairs, and counter surfaces.
+- Restock supplies for opening shift (leave note if running low).
+
+CASH & POS
+- Complete closing count per Cash Handling SOP (SOP-CASH-005).
+- Run end-of-day report. Print and attach to deposit bag.
+- Manager verifies and signs.
+
+SECURITY (LAST EMPLOYEE OUT)
+1. Verify all customers have left.
+2. Walk perimeter — check restrooms, back room, storage.
+3. Set alarm. Lock front door and back door.
+4. Verify alarm armed (confirmation beep/light).
+5. Do not re-enter after alarm is set without manager.
+
+EMERGENCY
+If alarm fails or door won't lock: call manager immediately. Do not leave premises unsecured.

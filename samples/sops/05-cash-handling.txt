@@ -1,0 +1,42 @@
+SUNRISE COFFEE CO. — CASH HANDLING & POS SOP
+Document ID: SOP-CASH-005 | Version 1.0
+
+PURPOSE
+Prevent theft, errors, and ensure accurate financial records.
+
+STARTING DRAWER
+- Each register starts with exactly $200.00.
+- Opening employee counts and signs checklist.
+- Never share a register mid-shift without manager approval.
+
+ACCEPTING PAYMENT
+- Cash: count change back to customer aloud.
+- Card: wait for "Approved" on screen before handing receipt.
+- Mobile pay: confirm payment sound/notification before completing order.
+- Never leave register drawer open unattended.
+
+VOIDS & REFUNDS
+- Voids under $10: shift lead may approve.
+- Refunds over $10: manager approval required (call or text).
+- Document reason on POS for every void/refund.
+- Never void a transaction after customer has left without manager approval.
+
+TIPS
+- Tip jar is for all staff — collected and split per payroll policy.
+- Do not solicit tips aggressively.
+- Card tips processed through POS only.
+
+MID-SHIFT DROP
+- If drawer exceeds $400, perform cash drop into safe envelope.
+- Record drop amount on checklist. Manager verifies at end of day.
+
+CLOSING COUNT
+- Count all cash, compare to POS report.
+- Acceptable variance: ± $3.00.
+- Variance over $3.00: recount with second employee, notify manager.
+- Deposit bag sealed and placed in safe. Only manager handles bank deposit.
+
+SECURITY
+- Never discuss alarm codes or safe combinations in public areas.
+- Two employees required for safe access after closing.
+- Report suspicious behavior to manager immediately.

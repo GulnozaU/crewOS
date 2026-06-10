@@ -1,0 +1,40 @@
+SUNRISE COFFEE CO. — OPENING PROCEDURES SOP
+Document ID: SOP-OPEN-001 | Version 1.0
+
+PURPOSE
+Ensure the store opens safely, on time, and ready for customers.
+
+RESPONSIBILITY
+Opening shift lead (first employee on duty).
+
+PROCEDURE
+
+1. ARRIVAL (30 minutes before open)
+   - Unlock front door. Disable alarm within 60 seconds using code provided by manager.
+   - Turn on all interior lights and exterior signage.
+   - Check voicemail and manager notes from previous night.
+
+2. EQUIPMENT
+   - Turn on espresso machine. Allow 20 minutes to reach operating temperature.
+   - Turn on grinders, blenders, and POS system.
+   - Verify refrigerator temperature is 38°F or below. Log reading on opening checklist.
+   - If any equipment fails to start, call manager before opening to customers.
+
+3. CASH DRAWER
+   - Count starting cash: $200.00 in mixed bills and coins.
+   - Record count on opening checklist. Sign and date.
+   - Report any discrepancy over $2.00 to manager immediately.
+
+4. PREP & CLEANLINESS
+   - Wipe all counters, tables, and condiment stations.
+   - Restock cups, lids, napkins, and stirrers at each station.
+   - Brew first batch of drip coffee 15 minutes before open.
+   - Display "Open" sign at 6:00 AM (or scheduled open time).
+
+5. SAFETY CHECK
+   - Verify fire extinguisher is accessible and gauge is in green zone.
+   - Check that emergency exit paths are clear.
+   - Confirm first aid kit is stocked.
+
+NON-COMPLIANCE
+Failure to complete opening checklist before serving customers may result in disciplinary action.

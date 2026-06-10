@@ -99,11 +99,15 @@ export default function OwnerPage() {
 
   async function generateSchedule() {
     setGeneratingSchedule(true);
-    await fetch("/api/schedules/generate", {
+    const res = await fetch("/api/schedules/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ companyId }),
     });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error || "Schedule generation failed");
+    }
     await loadData();
     setGeneratingSchedule(false);
   }
@@ -128,6 +132,22 @@ export default function OwnerPage() {
     await loadData();
   }
 
+  async function retryDocument(id: string) {
+    await fetch(`/api/documents/${id}/retry`, { method: "POST" });
+    await loadData();
+  }
+
+  function shortError(error?: string) {
+    if (!error) return "";
+    if (error.includes("API key not valid")) {
+      return "Invalid Gemini API key — use a key from aistudio.google.com (starts with AIza...).";
+    }
+    if (error.includes("429") || error.includes("quota")) {
+      return "Gemini rate limit hit — wait 1 minute, then click Retry. Upload one SOP at a time.";
+    }
+    return error.length > 160 ? `${error.slice(0, 160)}…` : error;
+  }
+
   const empMap = Object.fromEntries(employees.map((e) => [e._id, e.name]));
 
   return (
@@ -147,23 +167,43 @@ export default function OwnerPage() {
             <p className="mb-3 text-sm text-[var(--muted)]">
               Upload SOPs, handbooks, or training manuals (PDF or text). Gemini will process them and generate training.
             </p>
-            <input
-              type="file"
-              accept=".pdf,.txt,.md,.text"
-              onChange={uploadDocument}
-              disabled={uploading}
-            />
-            {uploading && <p className="mt-2 text-sm">Uploading and processing...</p>}
+            <label className={`btn btn-primary ${uploading ? "pointer-events-none opacity-50" : "cursor-pointer"}`}>
+              {uploading ? "Uploading..." : "Choose SOP file to upload"}
+              <input
+                type="file"
+                className="sr-only"
+                accept=".pdf,.txt,.md,.text"
+                onChange={uploadDocument}
+                disabled={uploading}
+              />
+            </label>
+            <p className="mt-2 text-xs text-[var(--muted)]">PDF or text · one file at a time to avoid Gemini rate limits</p>
             <div className="mt-4 space-y-2">
               {documents.length === 0 ? (
                 <p className="text-sm text-[var(--muted)]">No documents uploaded.</p>
               ) : (
                 documents.map((doc) => (
-                  <div key={doc._id} className="flex items-center justify-between rounded border p-2 text-sm">
-                    <span>{doc.originalName}</span>
-                    <span className={`badge badge-${doc.status === "processed" ? "completed" : doc.status === "failed" ? "rejected" : "processing"}`}>
-                      {doc.status}
-                    </span>
+                  <div key={doc._id} className="rounded border p-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span>{doc.originalName}</span>
+                      <span className={`badge badge-${doc.status === "processed" ? "completed" : doc.status === "failed" ? "rejected" : "processing"}`}>
+                        {doc.status}
+                      </span>
+                    </div>
+                    {doc.processingError && (
+                      <div className="mt-2">
+                        <p className="text-xs text-[var(--danger)]">{shortError(doc.processingError)}</p>
+                        {doc.status === "failed" && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary mt-2 text-xs"
+                            onClick={() => retryDocument(doc._id)}
+                          >
+                            Retry processing
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))
               )}

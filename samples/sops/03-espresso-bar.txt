@@ -1,0 +1,48 @@
+SUNRISE COFFEE CO. — ESPRESSO BAR OPERATIONS SOP
+Document ID: SOP-ESP-003 | Version 1.0
+
+PURPOSE
+Standardize drink preparation for quality and consistency.
+
+ESPRESSO EXTRACTION
+- Dose: 18g coffee for double shot.
+- Yield: 36g liquid in 25-30 seconds.
+- If shot runs faster than 22 seconds: grind finer.
+- If shot runs slower than 32 seconds: grind coarser.
+- Discard any shot that blondes early or tastes sour/bitter.
+
+MILK STEAMING
+- Steam to 140°F for hot drinks (use thermometer until calibrated).
+- Create microfoam: no large bubbles, glossy texture.
+- Wipe steam wand immediately after every use.
+- Purge steam wand for 2 seconds after wiping.
+
+STANDARD RECIPES
+
+Latte (12 oz):
+  - 2 shots espresso
+  - 10 oz steamed milk
+  - Thin foam layer
+
+Cappuccino (12 oz):
+  - 2 shots espresso
+  - 6 oz steamed milk
+  - 4 oz dense foam
+
+Americano (12 oz):
+  - 2 shots espresso
+  - 10 oz hot water
+
+Iced Latte (16 oz):
+  - 2 shots espresso (pulled into shaker)
+  - Fill cup with ice
+  - 8 oz cold milk
+
+CLEANING (EVERY 2 HOURS)
+- Backflush espresso machine with cleaning tablet (follow machine guide).
+- Empty knock box.
+- Sanitize steam wand tip.
+- Wipe group heads and portafilters.
+
+EQUIPMENT FAILURE
+If espresso machine is down: offer drip coffee or cold brew. Notify manager. Do not serve espresso-based drinks until machine is repaired.
