@@ -39,9 +39,17 @@ async function resolveMongoUri(): Promise<string> {
   return global._mongoMemoryServer.getUri();
 }
 
+function createClient(uri: string): MongoClient {
+  return new MongoClient(uri, {
+    serverSelectionTimeoutMS: 10_000,
+    // Avoid IPv6 TLS issues on some networks (common Atlas SSL alert 80 cause)
+    family: 4,
+  });
+}
+
 async function getClientPromise(): Promise<MongoClient> {
   const uri = await resolveMongoUri();
-  const client = new MongoClient(uri);
+  const client = createClient(uri);
   return client.connect();
 }
 

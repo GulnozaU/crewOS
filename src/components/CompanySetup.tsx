@@ -16,18 +16,29 @@ export function CompanySetup({ onSelect, selectedId }: Props) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetch("/api/companies")
-      .then((r) => r.json())
-      .then(setCompanies)
-      .catch(console.error);
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) {
+          throw new Error(data.error || "Failed to load companies");
+        }
+        if (Array.isArray(data)) {
+          setCompanies(data);
+        }
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load companies");
+      });
   }, []);
 
   async function createCompany(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     setLoading(true);
+    setError("");
     try {
       const res = await fetch("/api/companies", {
         method: "POST",
@@ -35,9 +46,14 @@ export function CompanySetup({ onSelect, selectedId }: Props) {
         body: JSON.stringify({ name: name.trim() }),
       });
       const company = await res.json();
+      if (!res.ok) {
+        throw new Error(company.error || "Failed to create company");
+      }
       setCompanies((prev) => [company, ...prev]);
       onSelect(company._id);
       setName("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create company");
     } finally {
       setLoading(false);
     }
@@ -46,6 +62,11 @@ export function CompanySetup({ onSelect, selectedId }: Props) {
   return (
     <div className="card">
       <h3 className="mb-3 font-semibold">Select Company</h3>
+      {error ? (
+        <p className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      ) : null}
       {companies.length > 0 ? (
         <select
           className="input mb-3"
