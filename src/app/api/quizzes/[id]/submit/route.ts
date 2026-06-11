@@ -45,30 +45,36 @@ export async function POST(
     return NextResponse.json({ error: "Training module not found" }, { status: 404 });
   }
 
-  const { scoredAnswers, score } = await scoreQuizAnswers(
-    trainingModule.title,
-    trainingModule.sections,
-    quiz.questions,
-    answers
-  );
-  const passed = score >= quiz.passingScore;
-  const now = new Date();
+  try {
+    const { scoredAnswers, score } = await scoreQuizAnswers(
+      trainingModule.title,
+      trainingModule.sections,
+      quiz.questions,
+      answers
+    );
+    const passed = score >= quiz.passingScore;
+    const now = new Date();
 
-  const result = await collections.quizAttempts.insertOne({
-    companyId: toObjectId(companyId),
-    employeeId: toObjectId(employeeId),
-    quizId: toObjectId(quizId),
-    trainingModuleId: quiz.trainingModuleId,
-    answers: scoredAnswers,
-    score,
-    passed,
-    completedAt: now,
-    createdAt: now,
-  });
+    const result = await collections.quizAttempts.insertOne({
+      companyId: toObjectId(companyId),
+      employeeId: toObjectId(employeeId),
+      quizId: toObjectId(quizId),
+      trainingModuleId: quiz.trainingModuleId,
+      answers: scoredAnswers,
+      score,
+      passed,
+      completedAt: now,
+      createdAt: now,
+    });
 
-  const attempt = await collections.quizAttempts.findOne({
-    _id: result.insertedId,
-  });
+    const attempt = await collections.quizAttempts.findOne({
+      _id: result.insertedId,
+    });
 
-  return NextResponse.json(serialize(attempt), { status: 201 });
+    return NextResponse.json(serialize(attempt), { status: 201 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Quiz scoring failed";
+    const status = message.includes("429") || message.includes("quota") ? 503 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
 }

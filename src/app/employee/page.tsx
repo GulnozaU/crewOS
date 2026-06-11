@@ -155,11 +155,17 @@ export default function EmployeePage() {
       questionId,
       answer,
     }));
-    const result = await fetch(`/api/quizzes/${quizId}/submit`, {
+    const res = await fetch(`/api/quizzes/${quizId}/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ companyId, employeeId, answers }),
-    }).then((r) => r.json());
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      alert(result.error || "Quiz submission failed. Wait a minute if rate-limited, then retry.");
+      setLoading(false);
+      return;
+    }
     setQuizResult({ score: result.score, passed: result.passed });
     if (result.passed) {
       setPassedModules((prev) => new Set([...prev, selectedModule]));
@@ -169,11 +175,17 @@ export default function EmployeePage() {
 
   async function startRoleplay(moduleId: string) {
     setLoading(true);
-    const session = await fetch("/api/roleplay/start", {
+    const res = await fetch("/api/roleplay/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ companyId, employeeId, trainingModuleId: moduleId }),
-    }).then((r) => r.json());
+    });
+    const session = await res.json();
+    if (!res.ok) {
+      alert(session.error || "Could not start roleplay.");
+      setLoading(false);
+      return;
+    }
     setRoleplaySession(session);
     setLoading(false);
   }

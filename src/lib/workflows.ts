@@ -36,13 +36,22 @@ export async function processDocument(documentId: string): Promise<void> {
         $set: {
           extractedText,
           summary,
-          status: "processed",
           updatedAt: new Date(),
         },
       }
     );
 
     await generateTrainingFromDocument(docId, doc.companyId, extractedText, doc.originalName);
+
+    await collections.documents.updateOne(
+      { _id: docId },
+      {
+        $set: {
+          status: "processed",
+          updatedAt: new Date(),
+        },
+      }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Processing failed";
     await collections.documents.updateOne(

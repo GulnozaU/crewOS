@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import type {
   TrainingSection,
   QuizQuestion,
@@ -8,18 +8,71 @@ import type {
   Employee,
 } from "@/types";
 
-const MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+const PRIMARY_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+const MODEL_FALLBACKS = [PRIMARY_MODEL, "gemini-2.0-flash", "gemini-2.0-flash-lite"].filter(
+  (m, i, arr) => arr.indexOf(m) === i
+);
 
-function getClient() {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY environment variable is required");
+let client: GoogleGenAI | null = null;
+
+function getClient(): GoogleGenAI {
+  if (!client) {
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY environment variable is required");
+    }
+    client = new GoogleGenAI({ apiKey });
   }
-  return new GoogleGenerativeAI(apiKey);
+  return client;
 }
 
-function getModel() {
-  return getClient().getGenerativeModel({ model: MODEL });
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("429") ||
+    message.includes("503") ||
+    message.includes("quota") ||
+    message.includes("UNAVAILABLE") ||
+    message.includes("Resource exhausted")
+  );
+}
+
+async function generateTextWithModel(model: string, prompt: string): Promise<string> {
+  const ai = getClient();
+  const response = await ai.models.generateContent({
+    model,
+    contents: prompt,
+  });
+  const text = response.text;
+  if (!text?.trim()) {
+    throw new Error("Gemini returned an empty response");
+  }
+  return text;
+}
+
+async function generateText(prompt: string): Promise<string> {
+  let lastError: unknown;
+
+  for (const model of MODEL_FALLBACKS) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await generateTextWithModel(model, prompt);
+      } catch (error) {
+        lastError = error;
+        if (isRetryableError(error) && attempt < 2) {
+          await sleep(5000 * (attempt + 1));
+          continue;
+        }
+        break;
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 function extractJson<T>(text: string): T {
@@ -42,12 +95,15 @@ function extractJson<T>(text: string): T {
   }
 }
 
+async function generateJson<T>(prompt: string): Promise<T> {
+  const text = await generateText(prompt);
+  return extractJson<T>(text);
+}
+
 export async function summarizeDocument(text: string): Promise<string> {
-  const model = getModel();
-  const result = await model.generateContent(
+  return generateText(
     `Summarize this business document for training purposes. Focus on operational procedures, policies, and key knowledge employees must learn.\n\nDocument:\n${text.slice(0, 30000)}`
   );
-  return result.response.text();
 }
 
 export async function generateTrainingModule(
@@ -59,8 +115,8 @@ export async function generateTrainingModule(
   sections: TrainingSection[];
   estimatedMinutes: number;
 }> {
-  const model = getModel();
-  const prompt = `You are an expert corporate trainer. Based ONLY on the following company document, create a structured training module.
+  return generateJson(
+    `You are an expert corporate trainer. Based ONLY on the following company document, create a structured training module.
 
 Document name: ${documentName}
 
@@ -81,10 +137,8 @@ Return valid JSON with this exact structure:
   ]
 }
 
-Create 3-5 sections covering the most important operational knowledge from the document. All content must be derived from the document.`;
-
-  const result = await model.generateContent(prompt);
-  return extractJson(result.response.text());
+Create 3-5 sections covering the most important operational knowledge from the document. All content must be derived from the document.`
+  );
 }
 
 export async function generateQuiz(
@@ -95,12 +149,15 @@ export async function generateQuiz(
   questions: QuizQuestion[];
   passingScore: number;
 }> {
-  const model = getModel();
   const content = sections
     .map((s) => `## ${s.title}\n${s.content}\nKey points: ${s.keyPoints.join(", ")}`)
     .join("\n\n");
 
-  const prompt = `Create a quiz based ONLY on this training module content.
+  const parsed = await generateJson<{
+    title: string;
+    questions: QuizQuestion[];
+    passingScore: number;
+  }>(`Create a quiz based ONLY on this training module content.
 
 Module: ${moduleTitle}
 
@@ -122,14 +179,7 @@ Return valid JSON:
   ]
 }
 
-Create 5-8 multiple choice questions. correctAnswer must exactly match one of the options.`;
-
-  const result = await model.generateContent(prompt);
-  const parsed = extractJson<{
-    title: string;
-    questions: QuizQuestion[];
-    passingScore: number;
-  }>(result.response.text());
+Create 5-8 multiple choice questions. correctAnswer must exactly match one of the options.`);
 
   parsed.questions = parsed.questions.map((q, i) => ({
     ...q,
@@ -150,8 +200,7 @@ export async function generateRoleplayScenario(
   objectives: string[];
   openingMessage: string;
 }> {
-  const model = getModel();
-  const prompt = `Create a realistic customer interaction roleplay scenario based on the company's procedures and the training module.
+  return generateJson(`Create a realistic customer interaction roleplay scenario based on the company's procedures and the training module.
 
 Employee role: ${employeeRole}
 Training module: ${moduleTitle}
@@ -168,10 +217,7 @@ Return valid JSON:
   "openingMessage": "first message from the customer to start the roleplay"
 }
 
-The scenario must test knowledge from the company documents.`;
-
-  const result = await model.generateContent(prompt);
-  return extractJson(result.response.text());
+The scenario must test knowledge from the company documents.`);
 }
 
 export async function generateCustomerResponse(
@@ -180,12 +226,11 @@ export async function generateCustomerResponse(
   conversationHistory: { role: string; content: string }[],
   employeeMessage: string
 ): Promise<{ response: string; isComplete: boolean }> {
-  const model = getModel();
   const history = conversationHistory
     .map((m) => `${m.role}: ${m.content}`)
     .join("\n");
 
-  const prompt = `You are roleplaying as a customer in a training simulation.
+  return generateJson(`You are roleplaying as a customer in a training simulation.
 
 Scenario: ${scenarioDescription}
 Customer persona: ${customerPersona}
@@ -201,10 +246,7 @@ Return valid JSON:
 {
   "response": "customer's next message",
   "isComplete": false
-}`;
-
-  const result = await model.generateContent(prompt);
-  return extractJson(result.response.text());
+}`);
 }
 
 export async function evaluateRoleplay(
@@ -213,12 +255,11 @@ export async function evaluateRoleplay(
   documentContext: string,
   conversationHistory: { role: string; content: string }[]
 ): Promise<RoleplayEvaluation> {
-  const model = getModel();
   const history = conversationHistory
     .map((m) => `${m.role}: ${m.content}`)
     .join("\n");
 
-  const prompt = `Evaluate this employee roleplay against company procedures and scenario objectives.
+  return generateJson(`Evaluate this employee roleplay against company procedures and scenario objectives.
 
 Scenario: ${scenarioDescription}
 Objectives: ${objectives.join(", ")}
@@ -245,10 +286,7 @@ Return valid JSON:
   "summary": "overall evaluation summary"
 }
 
-Score 0-100. Include 3-5 evaluation categories. weakAreas must be specific knowledge gaps.`;
-
-  const result = await model.generateContent(prompt);
-  return extractJson(result.response.text());
+Score 0-100. Include 3-5 evaluation categories. weakAreas must be specific knowledge gaps.`);
 }
 
 export async function generateCertificationRecommendation(
@@ -264,7 +302,6 @@ export async function generateCertificationRecommendation(
   confidence: number;
   reasoning: string;
 }> {
-  const model = getModel();
   const feedbackContext =
     historicalFeedback.length > 0
       ? `\nHistorical manager decisions (learn from these patterns):\n${historicalFeedback
@@ -275,7 +312,7 @@ export async function generateCertificationRecommendation(
           .join("\n")}`
       : "";
 
-  const prompt = `As an AI workforce manager, recommend whether to certify this employee.
+  return generateJson(`As an AI workforce manager, recommend whether to certify this employee.
 
 Employee: ${employeeName} (${employeeRole})
 Training module: ${moduleTitle}
@@ -292,10 +329,7 @@ Return valid JSON:
   "reasoning": "detailed reasoning citing specific performance data"
 }
 
-Base your recommendation on actual performance data. Consider historical manager feedback patterns when available.`;
-
-  const result = await model.generateContent(prompt);
-  return extractJson(result.response.text());
+Base your recommendation on actual performance data. Consider historical manager feedback patterns when available.`);
 }
 
 export async function generateScheduleRecommendation(
@@ -307,7 +341,6 @@ export async function generateScheduleRecommendation(
   shifts: ScheduleShift[];
   reasoning: string;
 }> {
-  const model = getModel();
   const employeeList = employees
     .map((e) => `- ${e.name} (${e.role}, id: ${e._id?.toString()})`)
     .join("\n");
@@ -326,7 +359,7 @@ export async function generateScheduleRecommendation(
           .join("\n")}`
       : "";
 
-  const prompt = `Create a weekly work schedule for a small business.
+  return generateJson(`Create a weekly work schedule for a small business.
 
 Week starting: ${weekStartDate}
 
@@ -353,10 +386,7 @@ Return valid JSON:
   ]
 }
 
-Create realistic shifts Mon-Sun. Prioritize certified employees for roles matching their training. Use actual employee IDs from the list.`;
-
-  const result = await model.generateContent(prompt);
-  return extractJson(result.response.text());
+Create realistic shifts Mon-Sun. Prioritize certified employees for roles matching their training. Use actual employee IDs from the list.`);
 }
 
 export async function generateSupplementalTraining(
@@ -364,8 +394,7 @@ export async function generateSupplementalTraining(
   documentContext: string,
   employeeRole: string
 ): Promise<{ title: string; content: string }> {
-  const model = getModel();
-  const prompt = `Create supplemental training content to address these knowledge gaps for a ${employeeRole}.
+  return generateJson(`Create supplemental training content to address these knowledge gaps for a ${employeeRole}.
 
 Weak areas: ${weakAreas.join(", ")}
 
@@ -378,10 +407,7 @@ Return valid JSON:
   "content": "detailed training content in markdown format"
 }
 
-Content must be derived from company documents and directly address the weak areas.`;
-
-  const result = await model.generateContent(prompt);
-  return extractJson(result.response.text());
+Content must be derived from company documents and directly address the weak areas.`);
 }
 
 export async function scoreQuizAnswers(
@@ -393,14 +419,15 @@ export async function scoreQuizAnswers(
   scoredAnswers: { questionId: string; answer: string; isCorrect: boolean }[];
   score: number;
 }> {
-  const model = getModel();
   const content = sections
     .map((s) => `## ${s.title}\n${s.content}\nKey points: ${s.keyPoints.join(", ")}`)
     .join("\n\n");
 
   const answerMap = Object.fromEntries(answers.map((a) => [a.questionId, a.answer]));
 
-  const prompt = `You are grading a training quiz. Score each employee answer against the training module content ONLY.
+  const parsed = await generateJson<{
+    results: { questionId: string; isCorrect: boolean }[];
+  }>(`You are grading a training quiz. Score each employee answer against the training module content ONLY.
 
 Module: ${moduleTitle}
 
@@ -430,12 +457,7 @@ Return valid JSON:
   ]
 }
 
-Mark isCorrect true only if the employee answer demonstrates correct understanding per the training content. Accept paraphrased correct answers.`;
-
-  const result = await model.generateContent(prompt);
-  const parsed = extractJson<{
-    results: { questionId: string; isCorrect: boolean }[];
-  }>(result.response.text());
+Mark isCorrect true only if the employee answer demonstrates correct understanding per the training content. Accept paraphrased correct answers.`);
 
   const resultMap = Object.fromEntries(
     parsed.results.map((r) => [r.questionId, r.isCorrect])
@@ -460,12 +482,11 @@ export async function chatWithManager(
   message: string,
   chatHistory: { role: "user" | "assistant"; content: string }[]
 ): Promise<string> {
-  const model = getModel();
   const history = chatHistory
     .map((m) => `${m.role === "user" ? "Employee" : "AI Manager"}: ${m.content}`)
     .join("\n");
 
-  const prompt = `You are an AI manager assistant for a small business. Answer employee questions using ONLY the company knowledge below. If you don't know, say so.
+  return generateText(`You are an AI manager assistant for a small business. Answer employee questions using ONLY the company knowledge below. If you don't know, say so.
 
 Employee: ${employeeName} (${employeeRole})
 
@@ -477,8 +498,5 @@ ${history}
 
 Employee question: ${message}
 
-Provide a helpful, professional response based on company procedures.`;
-
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+Provide a helpful, professional response based on company procedures.`);
 }

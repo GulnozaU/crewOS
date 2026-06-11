@@ -8,6 +8,7 @@ const links = [
   { href: "/owner", label: "Owner Dashboard" },
   { href: "/employee", label: "Employee Portal" },
   { href: "/manager", label: "Manager Review" },
+  { href: "/agent", label: "Workforce Agent" },
 ];
 
 export function Nav() {

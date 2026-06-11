@@ -139,13 +139,13 @@ export default function OwnerPage() {
 
   function shortError(error?: string) {
     if (!error) return "";
-    if (error.includes("API key not valid")) {
-      return "Invalid Gemini API key — use a key from aistudio.google.com (starts with AIza...).";
+    if (error.includes("API key not valid") || error.includes("API_KEY_INVALID")) {
+      return "Gemini auth failed — restart dev server after updating .env.local. AQ. keys require the new @google/genai SDK (now installed).";
     }
-    if (error.includes("429") || error.includes("quota")) {
-      return "Gemini rate limit hit — wait 1 minute, then click Retry. Upload one SOP at a time.";
+    if (error.includes("429") || error.includes("quota") || error.includes("503") || error.includes("UNAVAILABLE")) {
+      return "Gemini busy or rate-limited — wait 1 minute, then Retry one file at a time.";
     }
-    return error.length > 160 ? `${error.slice(0, 160)}…` : error;
+    return error.length > 200 ? `${error.slice(0, 200)}…` : error;
   }
 
   const empMap = Object.fromEntries(employees.map((e) => [e._id, e.name]));

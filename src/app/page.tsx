@@ -10,7 +10,7 @@ export default function HomePage() {
         </p>
       </div>
 
-      <div className="mb-10 grid gap-4 md:grid-cols-3">
+      <div className="mb-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Link href="/owner" className="card transition hover:shadow-md">
           <h2 className="mb-2 text-lg font-semibold">Owner Dashboard</h2>
           <p className="text-sm text-[var(--muted)]">
@@ -27,6 +27,12 @@ export default function HomePage() {
           <h2 className="mb-2 text-lg font-semibold">Manager Review</h2>
           <p className="text-sm text-[var(--muted)]">
             Review quiz results, roleplay evaluations, approve certifications and schedules.
+          </p>
+        </Link>
+        <Link href="/agent" className="card transition hover:shadow-md border-[var(--primary)]">
+          <h2 className="mb-2 text-lg font-semibold">Workforce Agent</h2>
+          <p className="text-sm text-[var(--muted)]">
+            ADK agent with MongoDB MCP — plans and executes onboarding tasks.
           </p>
         </Link>
       </div>
