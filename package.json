@@ -12,7 +12,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "bash scripts/seed-demo.sh",
+    "seed": "node scripts/seed-sunrise.mjs",
+    "seed:sunrise": "node scripts/seed-sunrise.mjs",
+    "seed:live": "bash scripts/seed-demo.sh",
     "test:gemini": "node scripts/test-gemini.mjs"
   },
   "dependencies": {

@@ -21,8 +21,8 @@ cp .env.example .env.local
 npm install
 npm run dev
 
-# Optional: seed demo company + 6 sample SOPs
-npm run seed
+# Seed Sunrise Coffee Co. demo (company, employees, SOPs, training, quizzes → MongoDB)
+npm run seed:sunrise
 
 # Optional: verify Gemini connectivity
 node scripts/test-gemini.mjs

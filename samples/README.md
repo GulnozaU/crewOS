@@ -26,15 +26,20 @@ Demo company and SOP documents for hackathon testing and demo video.
 5. **05-cash-handling.txt** — POS, voids, refunds, deposits
 6. **06-closing-procedures.txt** — End-of-day cleanup and security
 
-## Quick seed (automated)
+## Quick seed (automated — writes to MongoDB Atlas)
 
 ```bash
-# Terminal 1
-npm run dev
+# Seeds company, employees, 6 SOPs, training modules, and quizzes
+npm run seed:sunrise
+```
 
-# Terminal 2
-chmod +x scripts/seed-demo.sh
-./scripts/seed-demo.sh
+Then open http://localhost:3000/owner and select **Sunrise Coffee Co.**
+
+For live Gemini processing instead of pre-built training:
+
+```bash
+npm run dev          # terminal 1
+npm run seed:live    # terminal 2 — uploads SOPs via API + Gemini
 ```
 
 ## Manual upload
