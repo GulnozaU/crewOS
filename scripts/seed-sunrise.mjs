@@ -100,16 +100,23 @@ function parseSopTraining(text, fileName) {
     });
   }
 
+  const distractors = [
+    "Ignore the procedure and continue serving",
+    "Skip manager notification",
+    "No documentation or checklist required",
+    "Close the store early without approval",
+  ];
+
   const questions = cleaned
-    .flatMap((s) => s.keyPoints.slice(0, 2))
-    .filter(Boolean)
+    .flatMap((s) => s.keyPoints.slice(0, 2).map((point) => ({ section: s.title, point })))
+    .filter((x) => x.point)
     .slice(0, 5)
-    .map((point, i) => {
-      const correct = point.length > 80 ? point.slice(0, 77) + "..." : point;
+    .map(({ section, point }, i) => {
+      const correct = point.length > 100 ? point.slice(0, 97) + "..." : point;
       return {
         id: `q${i + 1}`,
-        question: `Which statement is correct for ${title}?`,
-        options: [correct, "Ignore the procedure", "Skip manager notification", "No documentation required"],
+        question: `[${section}] Which action follows the SOP?`,
+        options: [correct, distractors[i % distractors.length], distractors[(i + 1) % distractors.length], distractors[(i + 2) % distractors.length]],
         correctAnswer: correct,
         explanation: `Per the SOP: ${point}`,
       };
@@ -214,6 +221,58 @@ async function main() {
     "05-cash-handling.txt",
     "06-closing-procedures.txt",
   ];
+
+  // Remove failed/stale uploads so Owner dashboard shows clean processed SOPs only
+  const stale = await documents
+    .find({
+      companyId,
+      $or: [
+        { status: { $in: ["failed", "processing", "uploaded"] } },
+        { originalName: { $nin: sopPaths } },
+      ],
+    })
+    .toArray();
+  if (stale.length) {
+    const staleIds = stale.map((d) => d._id);
+    await documents.deleteMany({ _id: { $in: staleIds } });
+    await trainingModules.deleteMany({ companyId, documentId: { $in: staleIds } });
+    console.log(`  Cleaned ${stale.length} stale/failed document(s)`);
+  }
+
+  for (const sopName of sopPaths) {
+    const dupes = await documents
+      .find({ companyId, originalName: sopName })
+      .sort({ updatedAt: -1 })
+      .toArray();
+    if (dupes.length > 1) {
+      const removeIds = dupes.slice(1).map((d) => d._id);
+      await documents.deleteMany({ _id: { $in: removeIds } });
+      await trainingModules.deleteMany({ companyId, documentId: { $in: removeIds } });
+    }
+  }
+
+  const validDocIds = (
+    await documents.find({ companyId, originalName: { $in: sopPaths } }).toArray()
+  ).map((d) => d._id);
+  const orphanMods = await trainingModules
+    .find({ companyId, documentId: { $nin: validDocIds } })
+    .toArray();
+  if (orphanMods.length) {
+    const orphanModIds = orphanMods.map((m) => m._id);
+    await quizzes.deleteMany({ trainingModuleId: { $in: orphanModIds } });
+    await progress.deleteMany({ trainingModuleId: { $in: orphanModIds } });
+    await trainingModules.deleteMany({ _id: { $in: orphanModIds } });
+    console.log(`  Removed ${orphanMods.length} orphan training module(s)`);
+  }
+
+  const modIds = (await trainingModules.find({ companyId }).toArray()).map((m) => m._id);
+  const orphanQuizzes = await quizzes.deleteMany({
+    companyId,
+    trainingModuleId: { $nin: modIds },
+  });
+  if (orphanQuizzes.deletedCount) {
+    console.log(`  Removed ${orphanQuizzes.deletedCount} orphan quiz(zes)`);
+  }
 
   let moduleCount = 0;
   for (const sopName of sopPaths) {
@@ -340,27 +399,48 @@ async function main() {
     console.log(`  SOP ready: ${sopName} → ${training.title}`);
   }
 
-  // Alex: first module in progress for employee demo
-  const openingMod = await trainingModules.findOne({
-    companyId,
-    title: /opening/i,
-  });
-  if (openingMod && employeeIds["alex@sunrisecoffee.demo"]) {
+  // Alex: Opening Procedures completed → quiz ready immediately
+  const openingMod = await trainingModules.findOne({ companyId, title: /opening/i });
+  const alexId = employeeIds["alex@sunrisecoffee.demo"];
+  if (openingMod && alexId) {
+    const sectionCount = (await trainingModules.findOne({ _id: openingMod._id }))?.sections?.length || 1;
+    const allSections = Array.from({ length: sectionCount }, (_, i) => i);
     await progress.updateOne(
-      {
-        companyId,
-        employeeId: employeeIds["alex@sunrisecoffee.demo"],
-        trainingModuleId: openingMod._id,
-      },
+      { companyId, employeeId: alexId, trainingModuleId: openingMod._id },
       {
         $set: {
-          status: "in_progress",
-          completedSections: [0],
+          status: "completed",
+          completedSections: allSections,
           startedAt: now,
+          completedAt: now,
           updatedAt: now,
         },
-      }
+      },
+      { upsert: true }
     );
+    console.log("  Alex → Opening Procedures training marked completed (quiz unlocked)");
+  }
+
+  // Ensure every employee has progress rows for every module
+  const allModules = await trainingModules.find({ companyId }).toArray();
+  for (const mod of allModules) {
+    for (const emp of EMPLOYEES) {
+      await progress.updateOne(
+        { companyId, employeeId: employeeIds[emp.email], trainingModuleId: mod._id },
+        {
+          $setOnInsert: {
+            companyId,
+            employeeId: employeeIds[emp.email],
+            trainingModuleId: mod._id,
+            status: "assigned",
+            completedSections: [],
+            createdAt: now,
+          },
+          $set: { updatedAt: now },
+        },
+        { upsert: true }
+      );
+    }
   }
 
   const totals = {

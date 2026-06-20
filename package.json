@@ -14,6 +14,7 @@
     "lint": "next lint",
     "seed": "node scripts/seed-sunrise.mjs",
     "seed:sunrise": "node scripts/seed-sunrise.mjs",
+    "demo": "node scripts/seed-sunrise.mjs && next dev",
     "seed:live": "bash scripts/seed-demo.sh",
     "test:gemini": "node scripts/test-gemini.mjs"
   },

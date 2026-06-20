@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCollections } from "@/lib/db";
+import { localCertificationRecommendation } from "@/lib/demo-fallbacks";
 import { generateCertificationRecommendation } from "@/lib/gemini";
 import { getHistoricalManagerFeedback } from "@/lib/workflows";
 import { toObjectId, serialize } from "@/lib/utils";
@@ -62,15 +63,26 @@ export async function POST(request: NextRequest) {
     toObjectId(companyId)
   );
 
-  const recommendation = await generateCertificationRecommendation(
-    employee.name,
-    employee.role,
-    trainingModule.title,
-    quizAttempt.score,
-    quizAttempt.passed,
-    roleplaySession.evaluation,
-    historicalFeedback
-  );
+  let recommendation;
+  try {
+    recommendation = await generateCertificationRecommendation(
+      employee.name,
+      employee.role,
+      trainingModule.title,
+      quizAttempt.score,
+      quizAttempt.passed,
+      roleplaySession.evaluation,
+      historicalFeedback
+    );
+  } catch {
+    recommendation = localCertificationRecommendation(
+      employee.name,
+      trainingModule.title,
+      quizAttempt.score,
+      quizAttempt.passed,
+      roleplaySession.evaluation.overallScore
+    );
+  }
 
   const now = new Date();
   const result = await collections.certificationRecommendations.insertOne({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCollections } from "@/lib/db";
 import { scoreQuizAnswers } from "@/lib/gemini";
+import { scoreQuiz } from "@/lib/quiz-scoring";
 import { toObjectId, serialize } from "@/lib/utils";
 
 export async function POST(
@@ -46,11 +47,18 @@ export async function POST(
   }
 
   try {
-    const { scoredAnswers, score } = await scoreQuizAnswers(
+    const { scoredAnswers, score } = await scoreQuiz(
       trainingModule.title,
       trainingModule.sections,
       quiz.questions,
-      answers
+      answers,
+      () =>
+        scoreQuizAnswers(
+          trainingModule.title,
+          trainingModule.sections,
+          quiz.questions,
+          answers
+        )
     );
     const passed = score >= quiz.passingScore;
     const now = new Date();

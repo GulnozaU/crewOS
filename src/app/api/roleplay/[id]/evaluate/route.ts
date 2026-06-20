@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCollections } from "@/lib/db";
+import { localRoleplayEvaluation } from "@/lib/demo-fallbacks";
 import { evaluateRoleplay } from "@/lib/gemini";
 import { recordRoleplayWeaknesses } from "@/lib/workflows";
 import { toObjectId, serialize } from "@/lib/utils";
@@ -43,12 +44,17 @@ export async function POST(
     content: m.content,
   }));
 
-  const evaluation = await evaluateRoleplay(
-    session.scenarioDescription,
-    session.objectives,
-    documentContext,
-    history
-  );
+  let evaluation;
+  try {
+    evaluation = await evaluateRoleplay(
+      session.scenarioDescription,
+      session.objectives,
+      documentContext,
+      history
+    );
+  } catch {
+    evaluation = localRoleplayEvaluation(history);
+  }
 
   await collections.roleplaySessions.updateOne(
     { _id: toObjectId(sessionId) },

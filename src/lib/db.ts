@@ -21,36 +21,53 @@ const DB_NAME = process.env.MONGODB_DB || "crewoz";
 declare global {
   var _mongoClientPromise: Promise<MongoClient> | undefined;
   var _mongoMemoryServer: MongoMemoryServer | undefined;
+  var _mongoUsingMemory: boolean | undefined;
 }
 
-async function resolveMongoUri(): Promise<string> {
-  const configured = process.env.MONGODB_URI?.trim();
-  if (configured && configured !== "memory") {
-    return configured;
-  }
-
+async function memoryUri(): Promise<string> {
   if (!global._mongoMemoryServer) {
     global._mongoMemoryServer = await MongoMemoryServer.create();
-    console.log(
-      `[CrewOS] Using in-memory MongoDB at ${global._mongoMemoryServer.getUri()}`
-    );
+    global._mongoUsingMemory = true;
+    console.log("[CrewOS] Using in-memory MongoDB (demo mode — data resets on restart)");
   }
-
   return global._mongoMemoryServer.getUri();
 }
 
 function createClient(uri: string): MongoClient {
   return new MongoClient(uri, {
-    serverSelectionTimeoutMS: 10_000,
-    // Avoid IPv6 TLS issues on some networks (common Atlas SSL alert 80 cause)
+    serverSelectionTimeoutMS: 8_000,
     family: 4,
   });
 }
 
-async function getClientPromise(): Promise<MongoClient> {
-  const uri = await resolveMongoUri();
+async function connect(uri: string): Promise<MongoClient> {
   const client = createClient(uri);
-  return client.connect();
+  await client.connect();
+  await client.db(DB_NAME).command({ ping: 1 });
+  return client;
+}
+
+async function resolveClient(): Promise<MongoClient> {
+  const configured = process.env.MONGODB_URI?.trim();
+
+  if (configured === "memory" || !configured) {
+    return connect(await memoryUri());
+  }
+
+  try {
+    return await connect(configured);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `[CrewOS] MongoDB Atlas unreachable (${message.slice(0, 80)}…). Falling back to in-memory DB for demo.`
+    );
+    console.warn("[CrewOS] Fix Atlas Network Access (IP whitelist) or set MONGODB_URI=memory in .env.local");
+    return connect(await memoryUri());
+  }
+}
+
+async function getClientPromise(): Promise<MongoClient> {
+  return resolveClient();
 }
 
 let clientPromise: Promise<MongoClient>;
@@ -67,6 +84,10 @@ if (process.env.NODE_ENV === "development") {
 export async function getDb(): Promise<Db> {
   const client = await clientPromise;
   return client.db(DB_NAME);
+}
+
+export function isUsingMemoryDb(): boolean {
+  return Boolean(global._mongoUsingMemory || process.env.MONGODB_URI?.trim() === "memory");
 }
 
 export async function getCollections() {

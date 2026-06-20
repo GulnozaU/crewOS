@@ -8,9 +8,13 @@ import {
   generateScheduleRecommendation,
 } from "./gemini";
 import { extractTextFromFile } from "./documents";
-import type { ScheduleRecommendation } from "@/types";
+import { parseSopTraining, summarizeSopLocally } from "./sop-processor";
+import type { ScheduleRecommendation, TrainingSection, QuizQuestion } from "@/types";
 
-export async function processDocument(documentId: string): Promise<void> {
+export async function processDocument(
+  documentId: string,
+  options?: { preferLocal?: boolean }
+): Promise<void> {
   const collections = await getCollections();
   const docId = new ObjectId(documentId);
 
@@ -28,7 +32,16 @@ export async function processDocument(documentId: string): Promise<void> {
       throw new Error("No text could be extracted from document");
     }
 
-    const summary = await summarizeDocument(extractedText);
+    let summary: string;
+    if (options?.preferLocal) {
+      summary = summarizeSopLocally(extractedText);
+    } else {
+      try {
+        summary = await summarizeDocument(extractedText);
+      } catch {
+        summary = summarizeSopLocally(extractedText);
+      }
+    }
 
     await collections.documents.updateOne(
       { _id: docId },
@@ -41,7 +54,13 @@ export async function processDocument(documentId: string): Promise<void> {
       }
     );
 
-    await generateTrainingFromDocument(docId, doc.companyId, extractedText, doc.originalName);
+    await generateTrainingFromDocument(
+      docId,
+      doc.companyId,
+      extractedText,
+      doc.originalName,
+      options?.preferLocal
+    );
 
     await collections.documents.updateOne(
       { _id: docId },
@@ -72,52 +91,112 @@ async function generateTrainingFromDocument(
   documentId: ObjectId,
   companyId: ObjectId,
   text: string,
-  documentName: string
+  documentName: string,
+  preferLocal = false
 ): Promise<void> {
   const collections = await getCollections();
-
-  const moduleData = await generateTrainingModule(text, documentName);
   const now = new Date();
 
-  const trainingResult = await collections.trainingModules.insertOne({
-    companyId,
-    documentId,
-    title: moduleData.title,
-    description: moduleData.description,
-    sections: moduleData.sections,
-    estimatedMinutes: moduleData.estimatedMinutes,
-    createdAt: now,
-    updatedAt: now,
-  });
+  let moduleData: {
+    title: string;
+    description: string;
+    sections: TrainingSection[];
+    estimatedMinutes: number;
+  };
+  let quizData: {
+    title: string;
+    questions: QuizQuestion[];
+    passingScore: number;
+  };
 
-  const quizData = await generateQuiz(moduleData.title, moduleData.sections);
+  if (preferLocal) {
+    const parsed = parseSopTraining(text, documentName);
+    moduleData = parsed;
+    quizData = parsed.quiz;
+  } else {
+    try {
+      moduleData = await generateTrainingModule(text, documentName);
+      quizData = await generateQuiz(moduleData.title, moduleData.sections);
+    } catch {
+      const parsed = parseSopTraining(text, documentName);
+      moduleData = parsed;
+      quizData = parsed.quiz;
+    }
+  }
 
-  await collections.quizzes.insertOne({
-    companyId,
-    trainingModuleId: trainingResult.insertedId,
-    title: quizData.title,
-    questions: quizData.questions,
-    passingScore: quizData.passingScore,
-    createdAt: now,
-    updatedAt: now,
-  });
+  const existing = await collections.trainingModules.findOne({ companyId, documentId });
+  let trainingModuleId: ObjectId;
 
-  const employees = await collections.employees
-    .find({ companyId })
-    .toArray();
+  if (existing) {
+    trainingModuleId = existing._id!;
+    await collections.trainingModules.updateOne(
+      { _id: trainingModuleId },
+      {
+        $set: {
+          title: moduleData.title,
+          description: moduleData.description,
+          sections: moduleData.sections,
+          estimatedMinutes: moduleData.estimatedMinutes,
+          updatedAt: now,
+        },
+      }
+    );
+    await collections.quizzes.updateOne(
+      { trainingModuleId },
+      {
+        $set: {
+          title: quizData.title,
+          questions: quizData.questions,
+          passingScore: quizData.passingScore,
+          updatedAt: now,
+        },
+      },
+      { upsert: true }
+    );
+  } else {
+    const trainingResult = await collections.trainingModules.insertOne({
+      companyId,
+      documentId,
+      title: moduleData.title,
+      description: moduleData.description,
+      sections: moduleData.sections,
+      estimatedMinutes: moduleData.estimatedMinutes,
+      createdAt: now,
+      updatedAt: now,
+    });
+    trainingModuleId = trainingResult.insertedId;
+
+    await collections.quizzes.insertOne({
+      companyId,
+      trainingModuleId,
+      title: quizData.title,
+      questions: quizData.questions,
+      passingScore: quizData.passingScore,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  const employees = await collections.employees.find({ companyId }).toArray();
 
   if (employees.length > 0) {
-    await collections.employeeTrainingProgress.insertMany(
-      employees.map((emp) => ({
-        companyId,
-        employeeId: emp._id!,
-        trainingModuleId: trainingResult.insertedId,
-        status: "assigned" as const,
-        completedSections: [],
-        createdAt: now,
-        updatedAt: now,
-      }))
-    );
+    for (const emp of employees) {
+      await collections.employeeTrainingProgress.updateOne(
+        { companyId, employeeId: emp._id!, trainingModuleId },
+        {
+          $setOnInsert: {
+            companyId,
+            employeeId: emp._id!,
+            trainingModuleId,
+            status: "assigned" as const,
+            completedSections: [],
+            createdAt: now,
+          },
+          $set: { updatedAt: now },
+        },
+        { upsert: true }
+      );
+    }
   }
 }
 

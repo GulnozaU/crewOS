@@ -163,9 +163,9 @@ export default function OwnerPage() {
       ) : (
         <div className="grid gap-6">
           <section className="card">
-            <h2 className="mb-4 font-semibold">Upload Documents</h2>
+            <h2 className="mb-4 font-semibold">Documents (SOPs)</h2>
             <p className="mb-3 text-sm text-[var(--muted)]">
-              Upload SOPs, handbooks, or training manuals (PDF or text). Gemini will process them and generate training.
+              Demo SOPs are auto-processed on startup. Optional: upload additional PDF or text files.
             </p>
             <label className={`btn btn-primary ${uploading ? "pointer-events-none opacity-50" : "cursor-pointer"}`}>
               {uploading ? "Uploading..." : "Choose SOP file to upload"}

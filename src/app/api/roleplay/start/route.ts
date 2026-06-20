@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCollections } from "@/lib/db";
+import { localRoleplayScenario } from "@/lib/demo-fallbacks";
 import { generateRoleplayScenario } from "@/lib/gemini";
 import { toObjectId, serialize } from "@/lib/utils";
 
@@ -43,11 +44,16 @@ export async function POST(request: NextRequest) {
   const doc = await collections.documents.findOne({ _id: trainingModule.documentId });
   const documentText = doc?.extractedText || doc?.summary || "";
 
-  const scenario = await generateRoleplayScenario(
-    documentText,
-    trainingModule.title,
-    employee.role
-  );
+  let scenario;
+  try {
+    scenario = await generateRoleplayScenario(
+      documentText,
+      trainingModule.title,
+      employee.role
+    );
+  } catch {
+    scenario = localRoleplayScenario(trainingModule.title, employee.role);
+  }
 
   const now = new Date();
   const result = await collections.roleplaySessions.insertOne({

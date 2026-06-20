@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCollections } from "@/lib/db";
 import { serialize } from "@/lib/utils";
+import { ensureDemoReady } from "@/lib/bootstrap-demo";
 
 export async function GET() {
   try {
+    await ensureDemoReady();
     const { companies } = await getCollections();
     const list = await companies.find().sort({ createdAt: -1 }).toArray();
     return NextResponse.json(serialize(list));
@@ -12,7 +14,7 @@ export async function GET() {
       error instanceof Error ? error.message : "Database connection failed";
     return NextResponse.json(
       {
-        error: "Cannot reach MongoDB. Check MONGODB_URI and Atlas Network Access (IP whitelist).",
+        error: "Database unavailable. Restart with npm run dev — demo auto-loads.",
         details: message,
       },
       { status: 503 }
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest) {
       error instanceof Error ? error.message : "Database connection failed";
     return NextResponse.json(
       {
-        error: "Cannot reach MongoDB. Check MONGODB_URI and Atlas Network Access (IP whitelist).",
+        error: "Database unavailable. Restart with npm run dev — demo auto-loads.",
         details: message,
       },
       { status: 503 }

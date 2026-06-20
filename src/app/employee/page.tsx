@@ -98,8 +98,14 @@ export default function EmployeePage() {
     localStorage.setItem("crewoz_companyId", companyId);
     fetch(`/api/employees?companyId=${companyId}`)
       .then((r) => r.json())
-      .then(setEmployees);
-  }, [companyId]);
+      .then((emps: Employee[]) => {
+        setEmployees(emps);
+        if (!employeeId) {
+          const alex = emps.find((e) => e.name === "Alex Rivera");
+          if (alex) setEmployeeId(alex._id);
+        }
+      });
+  }, [companyId, employeeId]);
 
   useEffect(() => {
     if (!companyId || !employeeId) return;
@@ -272,7 +278,9 @@ export default function EmployeePage() {
       {!companyId || !employeeId ? (
         <div className="empty-state">Select company and employee to continue.</div>
       ) : modules.length === 0 ? (
-        <div className="empty-state">No training assigned yet. Wait for documents to be processed.</div>
+        <div className="empty-state">
+          Loading demo training… refresh in a few seconds.
+        </div>
       ) : (
         <>
           <div className="mb-4 flex gap-2">
